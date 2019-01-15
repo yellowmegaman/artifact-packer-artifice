@@ -1,0 +1,72 @@
+{
+  "variables": {
+    "gce_from":    "debian-9",
+    "gce_zone":    "europe-west4-c",
+    "gce_project": "{{env `GOOGLE_PROJECT`}}",
+    "gce_auth":    "{{env `GOOGLE_CREDENTIALS`}}",
+    "gce_machine": "custom-1-1024",
+    "gce_user":    "cloud"
+  },
+  "builders": [
+    {
+      "name":                "gce",
+      "type":                "googlecompute",
+      "disk_type":           "pd-ssd",
+      "project_id":          "{{user `gce_project`}}",
+      "account_file":        "{{user `gce_auth`}}",
+      "ssh_username":        "{{user `gce_user`}}",
+      "machine_type":        "{{user `gce_machine`}}",
+      "source_image_family": "{{user `gce_from`}}",
+      "zone":                "{{user `gce_zone`}}",
+      "image_name":          "{{user `from`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "/usr/bin/packer",
+      "destination": "/tmp/packer"
+    },
+    {
+      "type": "file",
+      "source": "container",
+      "destination": "/tmp"
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo 'packer' | sudo -S bash -c '{{ .Vars }} {{ .Path }}'",
+      "inline": [
+        "apt-get -qq install -y apt-transport-https",
+        "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -",
+        "echo 'deb [arch=amd64] http://download.docker.com/linux/debian stretch stable' | tee /etc/apt/sources.list.d/docker.list",
+	"apt-get update",
+	"apt-get -qq install -y docker-ce",
+        "cd /tmp/container",
+        "/tmp/packer build container-packer.json"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "/tmp/container/alpine.tar",
+      "destination": "alpine.tar",
+      "direction": "download"
+    }
+  ],
+  "post-processors": [
+    [
+      {
+        "type": "artifice",
+        "files": ["alpine.tar"]
+      },
+      {
+        "type": "compress",
+        "output": "alpine.tar.gz"
+      },
+      {
+        "type": "shell-local",
+        "inline": [ "du -sh alpine.tar.gz"]
+      }
+    ]
+  ]
+}
+

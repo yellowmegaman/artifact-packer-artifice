@@ -1,0 +1,27 @@
+{
+  "builders":[
+    {
+      "type": "docker",
+      "commit": true,
+      "image": "alpine:3.8",
+      "run_command": ["-dit", "--net=host", "{{.Image}}", "/bin/ash"]
+    }
+  ],
+  "provisioners": [
+    {
+        "type": "shell",
+        "inline": [
+          "apk --no-cache add curl htop wget pv",
+	  "env | sort | uniq | tee /etc/hello"
+      ]
+    }
+  ],
+  "post-processors": [
+    [
+      {
+        "type": "docker-save",
+        "path": "alpine.tar"
+      }
+    ]
+  ]
+}
